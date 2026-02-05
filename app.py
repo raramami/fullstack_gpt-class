@@ -67,7 +67,18 @@ def embed_file(file):
     # with open(file_path,"wb") as f:
     #     f.write(file_content)
 
-    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
+    # 1. 디렉토리가 없으면 생성 (에러 방지 필수!)
+    cache_dir_path = "./.cache/files"
+    if not os.path.exists(cache_dir_path):
+        os.makedirs(cache_dir_path)
+    
+    file_path = f"{cache_dir_path}/{file.name}"
+    
+    # 2. 주석을 풀고 실제로 파일을 물리적 위치에 저장합니다.
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+
+    #cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
     splitter = CharacterTextSplitter.from_tiktoken_encoder(  
         separator="\n\n",
         chunk_size = 600,
