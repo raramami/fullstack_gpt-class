@@ -19,9 +19,15 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.callbacks.base import BaseCallbackHandler
 
+import streamlit as st
+import os
 
-#.streamlit 폴더 생성 >> secrets.toml >> OPEN_API_KEY 지정 하기 
-#gitingore 에 해당폴더 추가 
+# Streamlit Secrets에서 키를 가져와 환경 변수로 설정
+# (ChatOpenAI가 이 환경 변수를 자동으로 인식합니다)
+if "OPENAI_API_KEY" in st.secrets:
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+else:
+    st.error("OpenAI API Key가 설정되지 않았습니다!")
 
 st.set_page_config(
     page_title="Document GPT",
