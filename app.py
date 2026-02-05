@@ -3,6 +3,7 @@
 # 파일 업로드 및 채팅 기록을 구현합니다.
 # 사용자가 자체 OpenAI API 키를 사용하도록 허용하고, st.sidebar 내부의 st.input에서 이를 로드합니다.
 # st.sidebar를 사용하여 스트림릿 앱의 코드와 함께 깃허브 리포지토리에 링크를 넣습니다.
+#https://fullstackgpt-class-ezouhwmuhmdihbbbfv67cx.streamlit.app/
 
 from typing import Dict, List
 from uuid import UUID 
@@ -22,19 +23,21 @@ from langchain.callbacks.base import BaseCallbackHandler
 import streamlit as st
 import os
 
-# Streamlit Secrets에서 키를 가져와 환경 변수로 설정
-# (ChatOpenAI가 이 환경 변수를 자동으로 인식합니다)
-if "OPENAI_API_KEY" in st.secrets:
-    os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
-else:
-    st.error("OpenAI API Key가 설정되지 않았습니다!")
+# 사이드바 설정
+with st.sidebar:
+    # 1. API 키 입력 받기 (비밀번호 형식)
+    openai_api_key = st.text_input(
+        "OpenAI API Key를 입력하세요", 
+        type="password",
+        placeholder="sk-..."
+    )
+    
+    st.markdown("---") # 구분선
 
 st.set_page_config(
     page_title="Document GPT",
     page_icon="🤖",
 )
-
-
 
 class ChatCallBackHandler(BaseCallbackHandler):
 
@@ -63,33 +66,21 @@ llm = ChatOpenAI(
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
-    #st.write(file_content,file_path)
-    # with open(file_path,"wb") as f:
-    #     f.write(file_content)
-
-    # 1. 디렉토리가 없으면 생성 (에러 방지 필수!)
-    cache_dir_path = "./.cache/files"
-    if not os.path.exists(cache_dir_path):
-        os.makedirs(cache_dir_path)
     
-    file_path = f"{cache_dir_path}/{file.name}"
-    
-    # 2. 주석을 풀고 실제로 파일을 물리적 위치에 저장합니다.
-    with open(file_path, "wb") as f:
-        f.write(file_content)
 
-    #cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
+    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
     splitter = CharacterTextSplitter.from_tiktoken_encoder(  
         separator="\n\n",
         chunk_size = 600,
         chunk_overlap = 50,
     )
 
+
     loader = UnstructuredFileLoader(file_path)
     docs = loader.load_and_split(text_splitter=splitter)
-    embedder = OpenAIEmbeddings()
+    embedder = OpenAIEmbeddings(openai_api_key=openai_api_key)
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
-        embedder,file_path,
+        embedder,cache_dir,
     )
 
     vectorstores = FAISS.from_documents(docs,cached_embeddings) 
@@ -140,23 +131,27 @@ with st.sidebar:
 
 if file:
    retriever = embed_file(file)
+
+   if not openai_api_key:
+        st.error("먼저 사이드바에 OpenAI API Key를 입력해주세요!")
+   else:
   
-   send_message("I'm ready ! Ask Away ","ai",save=False)
-   paint_history()
-   message = st.chat_input("Ask anything about your file ...")
+    send_message("I'm ready ! Ask Away ","ai",save=False)
+    paint_history()
+    message = st.chat_input("Ask anything about your file ...")
 
-   if message:
-       send_message(message,"human")
-       chain = (
-           {
-           "context": retriever | RunnableLambda(format_docs) ,
-           "question": RunnablePassthrough()
-       } | prompt | llm 
-       )
+    if message:
+        send_message(message,"human")
+        chain = (
+            {
+            "context": retriever | RunnableLambda(format_docs) ,
+            "question": RunnablePassthrough()
+        } | prompt | llm 
+        )
 
-       with st.chat_message("ai"):
-            response = chain.invoke(message)
-        
-       #st.write(chain)
-else:
-    st.session_state["messages"] = []
+        with st.chat_message("ai"):
+                response = chain.invoke(message)
+            
+        #st.write(chain)
+    else:
+        st.session_state["messages"] = []
