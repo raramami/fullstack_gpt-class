@@ -89,7 +89,7 @@ def embed_file(file):
     docs = loader.load_and_split(text_splitter=splitter)
     embedder = OpenAIEmbeddings()
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
-        embedder,cache_dir,
+        embedder,file_path,
     )
 
     vectorstores = FAISS.from_documents(docs,cached_embeddings) 
