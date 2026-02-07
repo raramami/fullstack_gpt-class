@@ -5,17 +5,14 @@
 # st.sidebar를 사용하여 스트림릿 앱의 코드와 함께 깃허브 리포지토리에 링크를 넣습니다.
 #https://fullstackgpt-class-ezouhwmuhmdihbbbfv67cx.streamlit.app/
 
-from typing import Dict, List
-from uuid import UUID 
-from langchain.schema.output import ChatGenerationChunk, GenerationChunk
+
 import streamlit as st
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import  UnstructuredFileLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter,CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings,CacheBackedEmbeddings
-from langchain.vectorstores import Chroma, FAISS
+from langchain.vectorstores import FAISS
 from langchain.storage import LocalFileStore
-from langchain.chains import RetrievalQA
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.callbacks.base import BaseCallbackHandler
@@ -23,16 +20,6 @@ from langchain.callbacks.base import BaseCallbackHandler
 import streamlit as st
 import os
 
-# 사이드바 설정
-with st.sidebar:
-    # 1. API 키 입력 받기 (비밀번호 형식)
-    openai_api_key = st.text_input(
-        "OpenAI API Key를 입력하세요", 
-        type="password",
-        placeholder="sk-..."
-    )
-    
-    st.markdown("---") # 구분선
 
 st.set_page_config(
     page_title="Document GPT",
@@ -120,8 +107,6 @@ Use this chatbot to ask a question to an AI for your local file .
 Upload your file in the sidebar          
 
 """)
-
-
 
 
 def main():
