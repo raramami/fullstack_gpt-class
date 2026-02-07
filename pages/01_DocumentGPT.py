@@ -1,4 +1,3 @@
-import time
 from typing import Dict, List
 from uuid import UUID 
 from langchain.schema.output import ChatGenerationChunk, GenerationChunk
@@ -13,6 +12,7 @@ from langchain.chains import RetrievalQA
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.callbacks.base import BaseCallbackHandler
+from pathlib import Path
 
 
 #.streamlit 폴더 생성 >> secrets.toml >> OPEN_API_KEY 지정 하기 
@@ -55,12 +55,15 @@ def embed_file(file):
     #st.write(file_content,file_path)
     # with open(file_path,"wb") as f:
     #     f.write(file_content)
+    Path("./.cache/files").mkdir(parents=True, exist_ok=True)
+    with open(file_path, "wb+") as f:
+        f.write(file_content)
 
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
     splitter = CharacterTextSplitter.from_tiktoken_encoder(  
-        separator="\n\n",
+        separator="\n",
         chunk_size = 600,
-        chunk_overlap = 50,
+        chunk_overlap = 100,
     )
 
     loader = UnstructuredFileLoader(file_path)
