@@ -11,14 +11,12 @@ from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import  UnstructuredFileLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings,CacheBackedEmbeddings
-from langchain.vectorstores import FAISS
+from langchain.vectorstores.faiss import FAISS
 from langchain.storage import LocalFileStore
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.callbacks.base import BaseCallbackHandler
-
-import streamlit as st
-import os
+from pathlib import Path
 
 
 st.set_page_config(
@@ -47,14 +45,14 @@ class ChatCallBackHandler(BaseCallbackHandler):
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
+    Path("./.cache/files").mkdir(parents=True, exist_ok=True)
     with open(file_path, "wb+") as f:
         f.write(file_content)
-
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
     splitter = CharacterTextSplitter.from_tiktoken_encoder(  
-        separator="\n\n",
+        separator="\n",
         chunk_size = 600,
-        chunk_overlap = 50,
+        chunk_overlap = 100,
     )
 
 
@@ -110,6 +108,9 @@ Upload your file in the sidebar
 
 
 def main():
+    if not openai_api_key:
+        return
+    
     llm = ChatOpenAI( 
         temperature=0.1,
         streaming=True,
