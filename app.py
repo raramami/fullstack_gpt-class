@@ -53,20 +53,15 @@ class ChatCallBackHandler(BaseCallbackHandler):
         self.message += token 
         self.message_box.markdown(self.message)
 
-llm = ChatOpenAI( 
-    temperature=0.1,
-    streaming=True,
-    callbacks=[
-        ChatCallBackHandler()
-        ],
-    )
+
 
 #streamlit 이 사용하기 위한 캐쉬기능을 위해 embeddings , files 폴더 .cache 폴더 하위에 생성 
 @st.cache_data(show_spinner="Embedding the file ...")
 def embed_file(file):
     file_content = file.read()
     file_path = f"./.cache/files/{file.name}"
-    
+    with open(file_path, "wb+") as f:
+        f.write(file_content)
 
     cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}") 
     splitter = CharacterTextSplitter.from_tiktoken_encoder(  
@@ -76,7 +71,7 @@ def embed_file(file):
     )
 
 
-    loader = UnstructuredFileLoader(file_path)
+    loader = UnstructuredFileLoader(f"{file_path}")
     docs = loader.load_and_split(text_splitter=splitter)
     embedder = OpenAIEmbeddings(openai_api_key=openai_api_key)
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
@@ -126,32 +121,48 @@ Upload your file in the sidebar
 
 """)
 
-with st.sidebar:
-    file = st.file_uploader("Upload file txt or pdf excel",type=["txt","pdf","xlsx"])
 
-if file:
-   retriever = embed_file(file)
 
-   if not openai_api_key:
-        st.error("먼저 사이드바에 OpenAI API Key를 입력해주세요!")
-   else:
-  
-    send_message("I'm ready ! Ask Away ","ai",save=False)
-    paint_history()
-    message = st.chat_input("Ask anything about your file ...")
 
-    if message:
-        send_message(message,"human")
-        chain = (
-            {
-            "context": retriever | RunnableLambda(format_docs) ,
-            "question": RunnablePassthrough()
-        } | prompt | llm 
+def main():
+    llm = ChatOpenAI( 
+        temperature=0.1,
+        streaming=True,
+        callbacks=[
+            ChatCallBackHandler()
+            ],
         )
 
-        with st.chat_message("ai"):
+    if file:
+        retriever = embed_file(file)
+        send_message("I'm ready ! Ask Away ","ai",save=False)
+        paint_history()
+        message = st.chat_input("Ask anything about your file ...")
+
+        if message:
+            send_message(message,"human")
+            chain = (
+                {
+                "context": retriever | RunnableLambda(format_docs) ,
+                "question": RunnablePassthrough()
+            } | prompt | llm 
+            )
+
+            with st.chat_message("ai"):
                 response = chain.invoke(message)
-            
-        #st.write(chain)
+                
+            #st.write(chain)
     else:
         st.session_state["messages"] = []
+        return
+        
+with st.sidebar:
+    openai_api_key = st.text_input("Input your OpenAI API Key")
+    file = st.file_uploader("Upload file txt or pdf excel",type=["txt","pdf","xlsx"])
+
+try:
+    main()
+
+except Exception as e:
+    st.error("Check your OpenAI API Key or File")
+    st.write(e)
