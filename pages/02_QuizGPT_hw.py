@@ -80,9 +80,10 @@ def format_docs(docs):
 
 @st.cache_data(show_spinner="Loading the file ...")
 def split_file(file):
+    file.seek(0)
     file_content = file.read()
     file_path = f"./.cache/quiz_files/{file.name}"
-    Path("./.cache/files").mkdir(parents=True, exist_ok=True)
+    Path("./.cache/quiz_files").mkdir(parents=True, exist_ok=True)
     with open(file_path, "wb+") as f:
         f.write(file_content)
 
