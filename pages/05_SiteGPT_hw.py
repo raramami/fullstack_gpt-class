@@ -25,9 +25,13 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 import streamlit as st
 
-llm = ChatOpenAI(
-    temperature=0.1,
-)
+def get_llm(openai_api_key):
+    llm = ChatOpenAI(
+        temperature=0.1,
+        model="gpt-4o-mini", # 가성비 모델 추천
+        openai_api_key=openai_api_key
+    )
+    return llm
 
 answers_prompt = ChatPromptTemplate.from_template("""
     Using ONLY the following context answer the user's question. If you can't just say you don't know, don't make anything up.
@@ -59,7 +63,7 @@ answers_prompt = ChatPromptTemplate.from_template("""
 def get_answers(inputs):
     docs = inputs['docs']
     question = inputs['question']
-    answers_chain = answers_prompt | llm
+    answers_chain = answers_prompt | get_llm(openai_api_key)
     # answers = []
     # for doc in docs:
     #     result = answers_chain.invoke({
@@ -102,7 +106,7 @@ choose_prompt = ChatPromptTemplate.from_messages(
 def choose_answer(inputs):
     answers = inputs["answers"]
     question = inputs["question"]
-    choose_chain = choose_prompt | llm 
+    choose_chain = choose_prompt | get_llm(openai_api_key)
     condensed ="\n\n".join(f"{answer['answer']}\nSource:{answer['source']}\nDate:{answer['date']}\n" for answer in answers)
     # for answer in answers:
     #     condensed += f"Answer:{answer['answer']}\Source:{answer['source']}\Date:{answer['date']}\n"
@@ -161,8 +165,9 @@ with st.sidebar:
     openai_api_key = st.text_input("Input your OpenAI API Key",type="password")
     url = st.text_input("Write down a url",placeholder="https://example.com")
 
-
-if url:
+if not openai_api_key:
+    st.error("Pls input open ai api key .")
+elif url:
     if ".xml" not in url:
         with st.sidebar:
             st.error("Pls write down a sitemap url . ")
@@ -177,4 +182,3 @@ if url:
             chain = {"docs":retriever,"question":RunnablePassthrough()} | RunnableLambda(get_answers)| RunnableLambda(choose_answer)
             result = chain.invoke(query)
             st.write(result.content.replace("$","\$"))
-
