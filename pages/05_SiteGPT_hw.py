@@ -23,10 +23,7 @@ from langchain.vectorstores.faiss import FAISS
 import streamlit as st
 
 llm = ChatOpenAI(
-    temperature=1,
-    model="gpt-5-2025-08-07",
-    streaming=True,
-    callbacks=[StreamingStdOutCallbackHandler()],
+    temperature=0.1,
 )
 
 answers_prompt = ChatPromptTemplate.from_template("""
