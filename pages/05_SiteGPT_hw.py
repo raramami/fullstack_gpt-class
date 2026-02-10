@@ -1,3 +1,17 @@
+# (KR)
+# Cloudflare 공식문서(https://developers.cloudflare.com)를 위한 SiteGPT 버전을 만드세요.
+# 챗봇은 아래 프로덕트의 문서에 대한 질문에 답변할 수 있어야 합니다:
+# AI Gateway
+# Cloudflare Vectorize
+# Workers AI
+# 사이트맵(https://developers.cloudflare.com/sitemap-0.xml)을 사용하여 각 제품에 대한 공식문서를 찾아보세요.
+# 여러분이 제출한 내용은 다음 질문으로 테스트됩니다:
+# "llama-2-7b-chat-fp16 모델의 1M 입력 토큰당 가격은 얼마인가요?"
+# "Cloudflare의 AI 게이트웨이로 무엇을 할 수 있나요?"
+# "벡터라이즈에서 단일 계정은 몇 개의 인덱스를 가질 수 있나요?"
+# 유저가 자체 OpenAI API 키를 사용하도록 허용하고, st.sidebar 내부의 st.input에서 이를 로드합니다.
+# st.sidebar를 사용하여 Streamlit app과 함께 깃허브 리포지토리에 링크를 넣습니다.
+from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import AsyncChromiumLoader,SitemapLoader
 from langchain.document_transformers import Html2TextTransformer
@@ -9,7 +23,10 @@ from langchain.vectorstores.faiss import FAISS
 import streamlit as st
 
 llm = ChatOpenAI(
-    temperature=0.1,
+    temperature=1,
+    model="gpt-5-2025-08-07",
+    streaming=True,
+    callbacks=[StreamingStdOutCallbackHandler()],
 )
 
 answers_prompt = ChatPromptTemplate.from_template("""
@@ -86,7 +103,7 @@ def choose_answer(inputs):
     answers = inputs["answers"]
     question = inputs["question"]
     choose_chain = choose_prompt | llm 
-    condensed ="\n\n".join(f"{answer['answer']}\n\nSource:{answer['source']}\n\nDate:{answer['date']}\n" for answer in answers)
+    condensed ="\n\n".join(f"{answer['answer']}\nSource:{answer['source']}\nDate:{answer['date']}\n" for answer in answers)
     # for answer in answers:
     #     condensed += f"Answer:{answer['answer']}\Source:{answer['source']}\Date:{answer['date']}\n"
     #st.write(condensed)
@@ -106,8 +123,8 @@ def parse_page(soup):
         footer.decompose()
     return (
             str(soup.get_text())
-            .replace("\n"," ")
-            .replace("nExplore"," ")
+            # .replace("\n"," ")
+            # .replace("nExplore"," ")
             )
 
 @st.cache_data(show_spinner="Loading website..")
@@ -117,7 +134,7 @@ def load_website(url):
         chunk_overlap=200,
     )
     loader = SitemapLoader(url,
-                            filter_urls=[r"^(.*\/models\/).*",],
+                            filter_urls=[r"^(.*\/ai-gateway\/).*",], #r"^(.*\/vectorize\/).*",],
                            parsing_function=parse_page)
     loader.requests_per_second = 1  # 차단당하지 않도록 1초단위로 요청시간 설정 
     docs = loader.load_and_split(text_splitter=splitter)
@@ -141,29 +158,23 @@ st.markdown("""
 """)
 
 with st.sidebar:
+    openai_api_key = st.text_input("Input your OpenAI API Key",type="password")
     url = st.text_input("Write down a url",placeholder="https://example.com")
 
 
 if url:
-    #async chromium loader : playwright install 명령어로 설치 
-    # loader = AsyncChromiumLoader(url)
-    # docs = loader.load()
-    # transformed = html2text_transformer.transform_documents(docs)
-    # st.write(docs)
-
-    # https://openai.com/index/frontier-risk-and-preparedness/
-
     if ".xml" not in url:
         with st.sidebar:
             st.error("Pls write down a sitemap url . ")
-            #https://deepmind.google/sitemap.xml
+            #https://developers.cloudflare.com/sitemap-0.xml
 
     else:
-       retriever = load_website(url)
-       query = st.text_input("Ask a question to the website")
-       if query:
-            #    docs = retriever.invoke("What is the price of Gemini 3?")
-            #    docs
+        retriever = load_website(url)
+        # docs = retriever.invoke("What is the price of Gemini 3?")
+        # docs
+        query = st.text_input("Ask a question to the website")
+        if query:
             chain = {"docs":retriever,"question":RunnablePassthrough()} | RunnableLambda(get_answers)| RunnableLambda(choose_answer)
             result = chain.invoke(query)
             st.write(result.content.replace("$","\$"))
+
