@@ -28,7 +28,6 @@ st.set_page_config(
 
 llm = ChatOpenAI(
     temperature=1,
-    model="gpt-5-2025-08-07",
     streaming=True,
     callbacks=[StreamingStdOutCallbackHandler()],
 )

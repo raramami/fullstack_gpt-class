@@ -27,8 +27,8 @@ import streamlit as st
 
 def get_llm(openai_api_key):
     llm = ChatOpenAI(
-        temperature=0.1,
-        model="gpt-4o-mini", # 가성비 모델 추천
+        temperature=1,
+        model="gpt-5-mini", # 가성비 모델 추천
         openai_api_key=openai_api_key
     )
     return llm
@@ -132,22 +132,29 @@ def parse_page(soup):
             )
 
 @st.cache_data(show_spinner="Loading website..")
-def load_website(url):
+def load_website(url,openai_api_key):
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
         chunk_size=1000,
         chunk_overlap=200,
     )
     loader = SitemapLoader(url,
-                            filter_urls=[r"^(.*\/ai-gateway\/).*", r"^(.*\/vectorize\/).*",],
-                           parsing_function=parse_page)
-    loader.requests_per_second = 1  # 차단당하지 않도록 1초단위로 요청시간 설정 
+                            filter_urls=[
+                                        r"^(.*\/ai-gateway\/)", 
+                                        r"^(.*\/vectorize\/)",
+                            ],
+                            parsing_function=parse_page)
+    loader.requests_per_second = 5  # 차단당하지 않도록 1초단위로 요청시간 설정 
     docs = loader.load_and_split(text_splitter=splitter)
-    vector_store = FAISS.from_documents(docs,OpenAIEmbeddings())
+    if not docs:
+        st.error("해당 경로에서 문서를 찾지 못했습니다. 사이트맵 필터를 확인하세요.")
+        return None
+    
+    vector_store = FAISS.from_documents(docs,OpenAIEmbeddings(openai_api_key=openai_api_key))
     #st.write(docs)   #Fetching pages 문구가 터미널 콘솔에 보임 .
-    return vector_store.as_retriever() 
+    return vector_store.as_retriever()   #토큰이 초과되서 검색 개수 제한함
 
 st.set_page_config(
-    page_title="Site GPT",
+    page_title="Site GPT(HW)",
     page_icon="👩🏻‍💻",
 )
 
@@ -174,7 +181,7 @@ elif url:
             #https://developers.cloudflare.com/sitemap-0.xml
 
     else:
-        retriever = load_website(url)
+        retriever = load_website(url,openai_api_key)
         # docs = retriever.invoke("What is the price of Gemini 3?")
         # docs
         query = st.text_input("Ask a question to the website")
